@@ -1,140 +1,238 @@
-#!/bin/bash
-program_run_dir="~/.mirrorfy"
+#!/bin/sh
+program_run_dir=`echo ~/.mirrorfy`
 export mirrorfy_script_name="$0"
+if [ "$debug" == "on" ]
+then
+  set -x
+fi
 
+function check_required_program {
+  # Check Rsync
+  if ! hash rsync 2>/dev/null
+  then
+    echo >&2 "rsync is required but it's not installed. Please install rsync"; err_on_exit="yes"
+  fi
+  # Check inotifywait
+  if ! hash inotifywait 2>/dev/null
+  then
+     echo >&2 "inotifywait is required but it's not installed. Please install inotify-tools"; err_on_exit="yes"
+  fi
+  # Check ssh for rsync
+  if ! hash ssh 2>/dev/null
+  then
+     echo >&2 "ssh is required but it's not installed. Please install openssh"; err_on_exit="yes"
+  fi
 
+  if [ "$err_on_exit" == "yes" ]
+  then
+    echo >&2 "Aborting ..."
+    exit 1
+  fi
+}
+check_required_program
 
 function sync_dir_restart {
-	local local_dir="`echo $@ | cut -d" " -f 1`"
-	local remote_address="`echo $@ | cut -d" " -f 2`"
-	local remote_dir="`echo $@ | cut -d" " -f 3`"
-	local remote_port="`echo $@ | cut -d" " -f 4`"
-	local rsync_arguments="`echo $@ | cut -d" " -f 5`"
 
-	local proccess_hash
-	proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
-	local procstat
-	procstat=`cat $program_run_dir/stat/$proccess_hash`
-	while [ "$procstat" ==  "proccesing" ]
-	do
-		sleep 1
-		procstat=`cat $program_run_dir/stat/$proccess_hash`
-	done
+  local local_dir="`echo $@ | cut -d" " -f 1`"
+  local remote_address="`echo $@ | cut -d" " -f 2`"
+  local remote_dir="`echo $@ | cut -d" " -f 3`"
+  local remote_port="`echo $@ | cut -d" " -f 4`"
+  local rsync_arguments="`echo $@ | cut -d" " -f 5`"
 
-	kill -9 $(cat $program_run_dir/pid/$proccess_hash.pid)
+  local required_variable_err
+  if [ -z $local_dir ]
+  then
+    required_variable_err=1
+  fi
 
-	daemon_only=yes mirrorfy_script_name sync_daemon $@ &
+  if [ -z $remote_address ]
+  then
+    required_variable_err=1
+  fi
 
-	echo $! > $program_run_dir/pid/$proccess_hash.pid
+  if [ -z $remote_dir ]
+  then
+    required_variable_err=1
+  fi
+
+  if [ "$required_variable_err" == 1 ]
+  then
+    echo "Lines has a wrong or miss configuration
+    $@ $@ $@"
+    return
+  fi
+
+
+  if [ `grep -nr "$remote_address $remote_dir $remote_port" $sync_list | wc -l` -gt 1 ]
+  then
+    echo "WARN: Address $remote_address port $remote_port dir $remote_dir is duplicated"
+    grep -nr "$remote_address $remote_dir $remote_port" $sync_list
+  fi
+
+
+  local proccess_hash
+  proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
+  local procstat
+
+  if [ ! -f $program_run_dir/stat/$proccess_hash ]
+  then
+    echo > $program_run_dir/stat/$proccess_hash
+  fi
+
+  procstat=`cat $program_run_dir/stat/$proccess_hash`
+  while [ "$procstat" ==  "proccesing" ]
+  do
+    sleep 1
+    procstat=`cat $program_run_dir/stat/$proccess_hash`
+  done
+
+  if [ ! -f $program_run_dir/pid/$proccess_hash.pid ]
+  then
+    kill -9 $(cat $program_run_dir/pid/$proccess_hash.pid)
+  fi
+
+
+  daemon_only=yes $mirrorfy_script_name sync_daemon $@ &
+
+  echo $! > $program_run_dir/pid/$proccess_hash.pid
 }
 
 function sync_daemon {
 
-		# local_dir remote_address remote_dir remote_port rsync_arguments
-		local local_dir="`echo $@ | cut -d" " -f 1`"
-		local remote_address="`echo $@ | cut -d" " -f 2`"
-		local remote_dir="`echo $@ | cut -d" " -f 3`"
-		local remote_port="`echo $@ | cut -d" " -f 4`"
-		local rsync_arguments="`echo $@ | cut -d" " -f 5`"
+  # local_dir remote_address remote_dir remote_port rsync_arguments
+  local local_dir="`echo $@ | cut -d" " -f 1`"
+  local remote_address="`echo $@ | cut -d" " -f 2`"
+  local remote_dir="`echo $@ | cut -d" " -f 3`"
+  local remote_port="`echo $@ | cut -d" " -f 4`"
+  local rsync_arguments="`echo $@ | cut -d" " -f 5`"
 
 
-		if ! [ $remote_port ];
-		then
-	        remote_port="22"
-		fi
+  if ! [ $remote_port ];
+  then
+    remote_port="22"
+  fi
 
-		if ! [ $rsync_arguments ];
-		then
-	        rsync_arguments="-avzhp --delete"
-		fi
+  if ! [ $rsync_arguments ];
+  then
+    rsync_arguments="-avzhp --delete"
+  fi
 
-		proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
-		echo started > $program_run_dir/stat/$proccess_hash
+  proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
+  echo started > $program_run_dir/stat/$proccess_hash
 
-		while inotifywait -r -e modify,create,delete,move $local_dir
-		do
-			echo proccesing > $program_run_dir/stat/$proccess_hash
-			rsync $rsync_arguments -e "ssh -p $remote_port" $local_dir $remote_address:$remote_dir
-			echo done > $program_run_dir/stat/$proccess_hash
-		done
+  while inotifywait -r -e modify,create,delete,move $local_dir
+  do
+    echo proccesing > $program_run_dir/stat/$proccess_hash
+    rsync $rsync_arguments -e "ssh -p $remote_port" $local_dir $remote_address:$remote_dir
+    echo done > $program_run_dir/stat/$proccess_hash
+  done
 }
 
 function mirrorfy_sync_list {
   if test -f "mirrorfy.list"; then
-      echo "mirrorfy.list exist"
-  		return "($pwd)/mirrorfy.list"
-  	else
-  		return "~/.mirrorfy/mirrorfy.list"
+    echo "($pwd)/mirrorfy.list"
+  else
+    echo ~/.mirrorfy/mirrorfy.list
   fi
 }
 function mirrorfyd {
-  local sync_list=mirrorfy_sync_list
-	while inotifywait -e close_write  $sync_list
-	do
-			daemon_only=yes mirrorfy_script_name mirrorfy_start "$@" &
-	done
+  local sync_list=$(mirrorfy_sync_list)
+  if [[ -f "$sync_list" ]]
+  then
+    while inotifywait -e close_write  $sync_list
+    do
+      if [ -s "$sync_list" ]
+      then
+        daemon_only=yes $mirrorfy_script_name mirrorfy_start "$@" &
+      else
+        echo "$sync_list is empty"
+      fi
+    done
+  else
+    echo "$sync_list does not found"
+    exit
+  fi
 }
 
 function mirrorfy_start {
-  local sync_list=mirrorfy_sync_list
-	local remote_address="`echo $p | cut -d" " -f 2`"
-	local remote_dir="`echo $p | cut -d" " -f 3`"
-	local remote_port="`echo $p | cut -d" " -f 4`"
-	proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
+  # Check directories
+  if [[ ! -d "$program_run_dir" ]]
+  then
+    mkdir -v $program_run_dir
+  fi
 
-	if [ `grep -nr "$remote_address $remote_dir $remote_port" $sync_list | wc -l` -gt 1 ]
-	then
-  	echo "WARN: Address $remote_address port $remote_port dir $remote_dir is duplicated"
-		grep -nr "$remote_address $remote_dir $remote_port" $sync_list
-	fi
+  if [[ ! -d "$program_run_dir/stat" ]]
+  then
+    mkdir -v $program_run_dir/stat/
+  fi
 
-	while IFS= read -r p
-	do
-		if ! [ -z "$p" ] && ! [ "`echo $p | cut -c1`" = "#" ] ;
-	  then
-	    daemon_only=yes mirrorfy_script_name sync_dir_restart $p &
-	  fi
-	done < "$sync_list"
+  if [[ ! -d "$program_run_dir/pid" ]]
+  then
+    mkdir -v $program_run_dir/pid
+  fi
+
+  local sync_list=$(mirrorfy_sync_list)
+  if [[ -f "$sync_list" ]]
+  then
+    [ -s "$sync_list" ] || `echo "$sync_list is empty"; exit`
+    while IFS= read -r p
+    do
+      if ! [ -z "$p" ] && ! [ "`echo $p | cut -c1`" = "#" ] ;
+      then
+        daemon_only=yes $mirrorfy_script_name sync_dir_restart $p &
+      fi
+    done < "$sync_list"
+  else
+    echo "$sync_list does not found"
+    exit
+  fi
+
 
 }
 
 function help {
- echo "this is help function"
+  echo "this is help function"
 }
 
-if [ $1 != "start" ];
+echo `mirrorfy_sync_list`
+
+if [ "$1" == "sync_dir_restart" ] || [ "$1" == "sync_daemon" ] || [ "$1" == "mirrorfyd" ];
 then
-	if [ ! "$daemon_only" == "yes"]
-	then
-		echo "Error this function is only usable by program"
-		exit 1
-	fi
+  if [ ! "$daemon_only" == "yes" ]
+  then
+    echo "Error this function is only usable by program"
+    exit 1
+  fi
 fi
+
 
 
 case $1 in
 
   sync_dir_restart)
-    sync_dir_restart ${@:2}
-    ;;
+  shift
+  sync_dir_restart "$@"
+  ;;
 
   sync_daemon)
-    sync_daemon	${@:2}
-    ;;
+  sync_daemon	"${@}"
+  ;;
 
   mirrorfyd)
-    mirrorfyd	${@:2}
-    ;;
-	start)
-		if [ $# -eq 0 ]
-		then
-			mirrorfy_start
-		else
-			echo "mirrorfy_start does not require arguments"
-		fi
-	  ;;
+  mirrorfyd	"${@}"
+  ;;
+  start)
+  if [ "$@" == "start" ]
+  then
+    check_required_program
+    mirrorfy_start
+  else
+    echo $@
+    echo "mirrorfy_start does not require arguments"
+  fi
+  ;;
 
   *)
-    help
-    ;;
+  help
+  ;;
 esac
