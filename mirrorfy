@@ -30,7 +30,7 @@ function sync_dir_restart {
 
 	kill -9 $(cat $program_run_dir/pid/$proccess_hash.pid)
 
-	mirrorfy_script_name sync_daemon $@ &
+	daemon_only=yes mirrorfy_script_name sync_daemon $@ &
 
 	echo $! > $program_run_dir/pid/$proccess_hash.pid
 }
@@ -69,7 +69,7 @@ function sync_daemon {
 function mirrorfyd {
 	while inotifywait -e close_write  $sync_list
 	do
-			mirrorfy_script_name mirrorfy_start "$@" &
+			daemon_only=yes mirrorfy_script_name mirrorfy_start "$@" &
 	done
 }
 
@@ -89,8 +89,45 @@ function mirrorfy_start {
 	do
 		if ! [ -z "$p" ] && ! [ "`echo $p | cut -c1`" = "#" ] ;
 	  then
-	    mirrorfy_script_name sync_dir_restart $p &
+	    daemon_only=yes mirrorfy_script_name sync_dir_restart $p &
 	  fi
 	done < "$sync_list"
 
 }
+
+if [ $1 != "start" ];
+then
+	if [ ! "$daemon_only" == "yes"]
+	then
+		echo "Error this function is only usable by program"
+		exit 1
+	fi
+fi
+
+
+case $1 in
+
+  sync_dir_restart)
+    sync_dir_restart ${@:2}
+    ;;
+
+  sync_daemon)
+    sync_daemon	${@:2}
+    ;;
+
+  mirrorfyd)
+    mirrorfyd	${@:2}
+    ;;
+	start)
+		if [ $# -eq 0 ]
+		then
+			mirrorfy_start
+		else
+			echo "mirrorfy_start does not require arguments"
+		fi
+	  ;;
+
+  *)
+    help
+    ;;
+esac
