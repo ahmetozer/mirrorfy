@@ -1,14 +1,7 @@
 #!/bin/bash
 program_run_dir="~/.mirrorfy"
-FILE="mirrorfy.list"
 export mirrorfy_script_name="$0"
 
-if test -f "$FILE"; then
-    echo "$FILE exist"
-		sync_list="($pwd)/mirrorfy.list"
-	else
-		sync_list="~/.mirrorfy/mirrorfy.list"
-fi
 
 
 function sync_dir_restart {
@@ -66,7 +59,16 @@ function sync_daemon {
 		done
 }
 
+function mirrorfy_sync_list {
+  if test -f "mirrorfy.list"; then
+      echo "mirrorfy.list exist"
+  		return "($pwd)/mirrorfy.list"
+  	else
+  		return "~/.mirrorfy/mirrorfy.list"
+  fi
+}
 function mirrorfyd {
+  local sync_list=mirrorfy_sync_list
 	while inotifywait -e close_write  $sync_list
 	do
 			daemon_only=yes mirrorfy_script_name mirrorfy_start "$@" &
@@ -74,6 +76,7 @@ function mirrorfyd {
 }
 
 function mirrorfy_start {
+  local sync_list=mirrorfy_sync_list
 	local remote_address="`echo $p | cut -d" " -f 2`"
 	local remote_dir="`echo $p | cut -d" " -f 3`"
 	local remote_port="`echo $p | cut -d" " -f 4`"
@@ -93,6 +96,10 @@ function mirrorfy_start {
 	  fi
 	done < "$sync_list"
 
+}
+
+function help {
+ echo "this is help function"
 }
 
 if [ $1 != "start" ];
