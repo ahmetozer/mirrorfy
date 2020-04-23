@@ -1,0 +1,96 @@
+#!/bin/bash
+program_run_dir="~/.mirrorfy"
+FILE="mirrorfy.list"
+export mirrorfy_script_name="$0"
+
+if test -f "$FILE"; then
+    echo "$FILE exist"
+		sync_list="($pwd)/mirrorfy.list"
+	else
+		sync_list="~/.mirrorfy/mirrorfy.list"
+fi
+
+
+function sync_dir_restart {
+	local local_dir="`echo $@ | cut -d" " -f 1`"
+	local remote_address="`echo $@ | cut -d" " -f 2`"
+	local remote_dir="`echo $@ | cut -d" " -f 3`"
+	local remote_port="`echo $@ | cut -d" " -f 4`"
+	local rsync_arguments="`echo $@ | cut -d" " -f 5`"
+
+	local proccess_hash
+	proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
+	local procstat
+	procstat=`cat $program_run_dir/stat/$proccess_hash`
+	while [ "$procstat" ==  "proccesing" ]
+	do
+		sleep 1
+		procstat=`cat $program_run_dir/stat/$proccess_hash`
+	done
+
+	kill -9 $(cat $program_run_dir/pid/$proccess_hash.pid)
+
+	mirrorfy_script_name sync_daemon $@ &
+
+	echo $! > $program_run_dir/pid/$proccess_hash.pid
+}
+
+function sync_daemon {
+
+		# local_dir remote_address remote_dir remote_port rsync_arguments
+		local local_dir="`echo $@ | cut -d" " -f 1`"
+		local remote_address="`echo $@ | cut -d" " -f 2`"
+		local remote_dir="`echo $@ | cut -d" " -f 3`"
+		local remote_port="`echo $@ | cut -d" " -f 4`"
+		local rsync_arguments="`echo $@ | cut -d" " -f 5`"
+
+
+		if ! [ $remote_port ];
+		then
+	        remote_port="22"
+		fi
+
+		if ! [ $rsync_arguments ];
+		then
+	        rsync_arguments="-avzhp --delete"
+		fi
+
+		proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
+		echo started > $program_run_dir/stat/$proccess_hash
+
+		while inotifywait -r -e modify,create,delete,move $local_dir
+		do
+			echo proccesing > $program_run_dir/stat/$proccess_hash
+			rsync $rsync_arguments -e "ssh -p $remote_port" $local_dir $remote_address:$remote_dir
+			echo done > $program_run_dir/stat/$proccess_hash
+		done
+}
+
+function mirrorfyd {
+	while inotifywait -e close_write  $sync_list
+	do
+			mirrorfy_script_name mirrorfy_start "$@" &
+	done
+}
+
+function mirrorfy_start {
+	local remote_address="`echo $p | cut -d" " -f 2`"
+	local remote_dir="`echo $p | cut -d" " -f 3`"
+	local remote_port="`echo $p | cut -d" " -f 4`"
+	proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
+
+	if [ `grep -nr "$remote_address $remote_dir $remote_port" $sync_list | wc -l` -gt 1 ]
+	then
+  	echo "WARN: Address $remote_address port $remote_port dir $remote_dir is duplicated"
+		grep -nr "$remote_address $remote_dir $remote_port" $sync_list
+	fi
+
+	while IFS= read -r p
+	do
+		if ! [ -z "$p" ] && ! [ "`echo $p | cut -c1`" = "#" ] ;
+	  then
+	    mirrorfy_script_name sync_dir_restart $p &
+	  fi
+	done < "$sync_list"
+
+}
