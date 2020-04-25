@@ -1,11 +1,19 @@
 #!/bin/sh
-program_run_dir=`echo ~/.mirrorfy`
+
+###
+# Get program run dir , Check Debug is enabled, export Script name
+###
+program_run_dir="$HOME/.mirrorfy"
 export mirrorfy_script_name="$0"
 if [ "$debug" == "on" ]
 then
   set -x
 fi
 
+
+###
+# Check require programs for mirrorfy
+###
 function check_required_program {
   # Check Rsync
   if ! hash rsync 2>/dev/null
@@ -29,9 +37,12 @@ function check_required_program {
     exit 1
   fi
 }
-check_required_program
 
-function sync_dir_restart {
+####
+# This function checks the start or renew of the
+####
+
+function mirrorfy_folder_watch_daemon_starter {
 
   local local_dir="`echo $@ | cut -d" " -f 1`"
   local remote_address="`echo $@ | cut -d" " -f 2`"
@@ -40,7 +51,8 @@ function sync_dir_restart {
   local rsync_arguments="`echo $@ | cut -d" " -f 5`"
 
   local required_variable_err
-  if [ -z $local_dir ]
+  echo  $(( ${#local_dir} + ${#remote_address} + ${#remote_dir} )) asdf  ${local_dir} + ${remote_address} + ${remote_dir}
+  if [ ${#local_dir} -le 1 ]
   then
     required_variable_err=1
   fi
@@ -92,12 +104,16 @@ function sync_dir_restart {
   fi
 
 
-  daemon_only=yes $mirrorfy_script_name sync_daemon $@ &
+  daemon_only=yes $mirrorfy_script_name mirrorfy_folder_watch_daemon $@ &
 
   echo $! > $program_run_dir/pid/$proccess_hash.pid
 }
 
-function sync_daemon {
+###
+# This is folder tracking daemon.
+# it is watchs the folder. if the any changes appears, the functions starts rsync
+###
+function mirrorfy_folder_watch_daemon {
 
   # local_dir remote_address remote_dir remote_port rsync_arguments
   local local_dir="`echo $@ | cut -d" " -f 1`"
@@ -106,19 +122,21 @@ function sync_daemon {
   local remote_port="`echo $@ | cut -d" " -f 4`"
   local rsync_arguments="`echo $@ | cut -d" " -f 5`"
 
-
+  # If port is not defined, set port number to 22 which is default
   if ! [ $remote_port ];
   then
     remote_port="22"
   fi
 
+  # Check custom rsync argument. if is not setted, set to "-avzhp --delete"
   if ! [ $rsync_arguments ];
   then
     rsync_arguments="-avzhp --delete"
   fi
 
   proccess_hash=$(echo $remote_address$remote_dir$remote_port | md5sum | cut -d' ' -f 1)
-  echo started > $program_run_dir/stat/$proccess_hash
+
+  echo "started-but-not-triggered" > $program_run_dir/stat/$proccess_hash
 
   while inotifywait -r -e modify,create,delete,move $local_dir
   do
@@ -128,14 +146,25 @@ function sync_daemon {
   done
 }
 
+###
+# mirrorfy config is normally allocated on $HOME/.mirrorfy/mirrorfy.list
+# But each projects is also can have a own config file.
+###
+
 function mirrorfy_sync_list {
   if test -f "mirrorfy.list"; then
-    echo "($pwd)/mirrorfy.list"
+    echo "$(pwd)/mirrorfy.list"
   else
-    echo ~/.mirrorfy/mirrorfy.list
+    echo "$HOME/.mirrorfy/mirrorfy.list"
   fi
 }
-function mirrorfyd {
+
+
+####
+# This function is watch $sync_list file
+# if any changes occur, system exec mirrorfy_run function
+####
+function mirrorfy_list_watcher {
   local sync_list=$(mirrorfy_sync_list)
   if [[ -f "$sync_list" ]]
   then
@@ -143,7 +172,7 @@ function mirrorfyd {
     do
       if [ -s "$sync_list" ]
       then
-        daemon_only=yes $mirrorfy_script_name mirrorfy_start "$@" &
+        daemon_only=yes $mirrorfy_script_name mirrorfy_run $@ &
       else
         echo "$sync_list is empty"
       fi
@@ -154,7 +183,12 @@ function mirrorfyd {
   fi
 }
 
-function mirrorfy_start {
+####
+# It creates directories for keep trackins status of each directories
+# Also starts track daemon for each directories
+####
+
+function mirrorfy_run {
   # Check directories
   if [[ ! -d "$program_run_dir" ]]
   then
@@ -171,6 +205,7 @@ function mirrorfy_start {
     mkdir -v $program_run_dir/pid
   fi
 
+  # Start mirrorfy_folder_watch_daemon_starter
   local sync_list=$(mirrorfy_sync_list)
   if [[ -f "$sync_list" ]]
   then
@@ -179,24 +214,29 @@ function mirrorfy_start {
     do
       if ! [ -z "$p" ] && ! [ "`echo $p | cut -c1`" = "#" ] ;
       then
-        daemon_only=yes $mirrorfy_script_name sync_dir_restart $p &
+        echo $p
+        daemon_only=yes $mirrorfy_script_name mirrorfy_folder_watch_daemon_starter $p &
       fi
     done < "$sync_list"
   else
     echo "$sync_list does not found"
     exit
   fi
-
-
 }
 
+
+####
+# Help function
+####
 function help {
   echo "this is help function"
 }
 
-echo `mirrorfy_sync_list`
 
-if [ "$1" == "sync_dir_restart" ] || [ "$1" == "sync_daemon" ] || [ "$1" == "mirrorfyd" ];
+####
+# This if prevents exec some functions outside of the system
+###
+if [ "$1" == "mirrorfy_folder_watch_daemon_starter" ] || [ "$1" == "mirrorfy_folder_watch_daemon" ] || [ "$1" == "mirrorfy_list_watcher" ];
 then
   if [ ! "$daemon_only" == "yes" ]
   then
@@ -206,33 +246,39 @@ then
 fi
 
 
-
+####
+# Command line argument parser
+####
 case $1 in
 
-  sync_dir_restart)
-  shift
-  sync_dir_restart "$@"
+  mirrorfy_folder_watch_daemon_starter)
+  shift 1
+  mirrorfy_folder_watch_daemon_starter $@
   ;;
 
-  sync_daemon)
-  sync_daemon	"${@}"
+  mirrorfy_folder_watch_daemon)
+  shift 1
+  mirrorfy_folder_watch_daemon	$@
   ;;
 
-  mirrorfyd)
-  mirrorfyd	"${@}"
-  ;;
   start)
-  if [ "$@" == "start" ]
+  shift 1
+  check_required_program
+  mirrorfy_list_watcher	$@
+  ;;
+  run)
+  if [ "$@" == "run" ]
   then
     check_required_program
-    mirrorfy_start
+    mirrorfy_run
   else
     echo $@
-    echo "mirrorfy_start does not require arguments"
+    echo "mirrorfy_run does not require arguments"
   fi
   ;;
 
   *)
+  check_required_program
   help
   ;;
 esac
