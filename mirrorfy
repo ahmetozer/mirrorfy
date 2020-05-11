@@ -1,20 +1,26 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 ###
 # Get program run dir , Check Debug is enabled, export Script name
 ###
 program_run_dir="$HOME/.mirrorfy"
 export mirrorfy_script_name="$0"
-if [ "$debug" == "on" ]
+
+if [ ! -z $debug ]
 then
-  set -x
+  if [ "$debug" == "on" ]
+  then
+    set -x
+  else
+    echo "You are define debug variable but this variable is not equal to on. Dobug is aborted."
+  fi
 fi
 
 
 ###
 # Check require programs for mirrorfy
 ###
-function check_required_program {
+check_required_program() {
   # Check Rsync
   if ! hash rsync 2>/dev/null
   then
@@ -42,7 +48,7 @@ function check_required_program {
 # This function checks the start or renew of the
 ####
 
-function mirrorfy_folder_watch_daemon_starter {
+mirrorfy_folder_watch_daemon_starter() {
 
   local local_dir="`echo $@ | cut -d" " -f 1`"
   local remote_address="`echo $@ | cut -d" " -f 2`"
@@ -113,7 +119,7 @@ function mirrorfy_folder_watch_daemon_starter {
 # This is folder tracking daemon.
 # it is watchs the folder. if the any changes appears, the functions starts rsync
 ###
-function mirrorfy_folder_watch_daemon {
+mirrorfy_folder_watch_daemon() {
 
   # local_dir remote_address remote_dir remote_port rsync_arguments
   local local_dir="`echo $@ | cut -d" " -f 1`"
@@ -151,7 +157,7 @@ function mirrorfy_folder_watch_daemon {
 # But each projects is also can have a own config file.
 ###
 
-function mirrorfy_sync_list {
+mirrorfy_sync_list() {
   if test -f "mirrorfy.list"; then
     echo "$(pwd)/mirrorfy.list"
   else
@@ -164,7 +170,7 @@ function mirrorfy_sync_list {
 # This function is watch $sync_list file
 # if any changes occur, system exec mirrorfy_run function
 ####
-function mirrorfy_list_watcher {
+mirrorfy_list_watcher() {
   local sync_list=$(mirrorfy_sync_list)
   if [[ -f "$sync_list" ]]
   then
@@ -188,7 +194,7 @@ function mirrorfy_list_watcher {
 # Also starts track daemon for each directories
 ####
 
-function mirrorfy_run {
+mirrorfy_run() {
   # Check directories
   if [[ ! -d "$program_run_dir" ]]
   then
@@ -228,7 +234,7 @@ function mirrorfy_run {
 ####
 # Help function
 ####
-function help {
+help() {
   echo "this is help function"
 }
 
