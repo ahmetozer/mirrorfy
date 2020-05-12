@@ -367,6 +367,7 @@ help() {
   $0 add <sync-name>
   Adds current directory to list
   usable flags
+  -n config_name
   -a remote_address
   -d remote_dir
   -p remote_port
