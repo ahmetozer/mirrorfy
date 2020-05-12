@@ -20,7 +20,7 @@ fi
 ####
 # Some default variables for if its not defined
 ####
-rsync_arguments_default=-avzhp --delete
+rsync_arguments_default='-avzhp --delete'
 remote_port_default="22"
 
 pids_count=0
@@ -112,14 +112,16 @@ folder_watch_daemon() {
   local remote_address_local=$remote_address
   local remote_dir_local=$remote_dir
   local remote_port_local=$remote_port
-  local rsync_arguments_local=$rsync_arguments
+  local rsync_arguments_local
+  IFS=' ' read -a rsync_arguments_local <<< "$rsync_arguments"
+
   if [ "$run_once" == "yes" ]
   then
-    rsync $rsync_arguments -e "ssh -p $remote_port" $local_dir $remote_address:$remote_dir
+    rsync ${rsync_arguments_local} -e "ssh -p $remote_port_local" $local_dir_local $remote_address:$remote_dir
   else
-    while inotifywait -r -q -e modify,create,delete,move $local_dir
+    while inotifywait -r -q -e modify,create,delete,move $local_dir_local
     do
-      rsync $rsync_arguments -e "ssh -p $remote_port" $local_dir $remote_address:$remote_dir
+      rsync ${rsync_arguments_local} -e "ssh -p $remote_port_local" $local_dir_local $remote_address_local:$remote_dir_local
     done
   fi
 }
@@ -162,6 +164,139 @@ check_sync_variables() {
       echo "    $local_dir  does not exist on your filesystem."
     fi
   fi
+}
+port_regex="^((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([1-9][0-9]{3})|([1-9][0-9]{2})|([1-9][0-9])|([1-9]))$"
+
+add_sync_directory() {
+  shift 1
+  #echo $@
+  #local local_dir=$(pwd)
+  local remote_address remote_dir remote_port rsync_arguments local_dir
+  while test $# -gt 0; do
+    case "$1" in
+      -a|--remote-address)
+      remote_address=$2
+      shift
+      shift
+      ;;
+      -d|--remote-dir)
+      remote_dir=$2
+      shift
+      shift
+      ;;
+      -p|--remote-port)
+      remote_port=$2
+      shift
+      shift
+      ;;
+      -r|--rsync-arguments)
+      rsync_arguments=$2
+      shift
+      shift
+      ;;
+      -l|--local-dir)
+      local_dir=$2
+      shift
+      shift
+      ;;
+      -s|--sync-name)
+      sync_name=$2
+      shift
+      shift
+      ;;
+      *)
+      echo "err $1 is unknown flag. Aborted ..."
+      exit 1
+      ;;
+    esac
+  done
+
+  if [ -z $sync_name ]
+  then
+    echo "You have to define sync name with -n flag"
+    exit_err+=("err-add-sync-name-not-exist")
+  else
+    if [[ ! $sync_name =~ ^[0-9a-zA-Z]{1,15}$ ]];
+    then
+      echo "sync name has a unknow characters  != $sync_name"
+      exit_err+=("err-add-sync-name-wrong")
+    fi
+  fi
+
+  if [ -z $remote_port ]
+  then
+    remote_port=22
+  else
+    if [[ ! $remote_port =~ $port_regex ]];
+    then
+      echo "Please write valid port number != $remote_port"
+      exit_err+=("err-add-remote-port-config")
+    fi
+  fi
+
+  if [ -z $local_dir ]
+  then
+    local_dir=$(pwd)
+  fi
+
+  if [ ! -d $local_dir ];
+  then
+    echo "$local_dir directory is not exist "
+    exit_err+=("err-add-local-dir-not-exist")
+  fi
+
+  if [ -z $remote_dir ];
+  then
+    echo "remote_dir is does not defined"
+    exit_err+=("err-add-remote-dir-not-defined")
+  fi
+
+  if [ -z $remote_address ];
+  then
+    echo "remote_address is does not defined"
+    exit_err+=("err-add-remote-address-not-defined")
+  fi
+
+  if [ -z $rsync_arguments ]
+  then
+    rsync_arguments=$rsync_arguments_default
+  fi
+
+  if [ ! -d `dirname $(sync_list)` ]
+  then
+    echo "Config save directory is not exist"
+    exit_err+=("err-add-conf-dir-not-exist")
+  fi
+
+  if [ -z $exit_err ]
+  then
+    echo "These config will be written to `sync_list`
+    [$sync_name]
+    local_dir=$local_dir
+    remote_address=$remote_address
+    remote_dir=$remote_dir
+    remote_port=$remote_port
+    rsync_arguments=$rsync_arguments
+    "
+    read -p "Do you want to confirm this ? yes or no » " -e -i no  question
+
+    if [ "$question" == 'yes' ];
+    then
+      echo "[$sync_name]
+      local_dir=$local_dir
+      remote_address=$remote_address
+      remote_dir=$remote_dir
+      remote_port=$remote_port
+      rsync_arguments=$rsync_arguments" >> `sync_list`
+    else
+      echo "Config aborted"
+    fi
+  else
+    echo "Setup aborted.
+    Errors:  ${exit_err[@]}"
+    exit 1
+  fi
+
 }
 
 sync_list_print() {
@@ -207,7 +342,7 @@ mirrorfy_start() {
   done < <(declare -F | grep mirrorfy.sync |sed 's/declare -f //')
 
   for pid in ${pids[*]}; do
-      wait $pid
+    wait $pid
   done
 }
 
@@ -220,14 +355,25 @@ help() {
   mirrorfy v 0.2
   Avaible Commands
 
-    $0 list
-      List every sync with configs
+  $0 list
+  List every sync with configs
 
-    $0 start
-      Start daemon
+  $0 start
+  Start daemon
 
-    $0 run
-      One time run
+  $0 run
+  One time run
+
+  $0 add <sync-name>
+  Adds current directory to list
+  usable flags
+  -a remote_address
+  -d remote_dir
+  -p remote_port
+  -r rsync_arguments
+  -l local_dir
+  EX. $0 add project1 -l /home/ahmet/project1 -d /home/backup/project1 -a 1.1.1.1
+  $0 add project1 -d /home/backup/project1 -a 1.1.1.1 -p 24
   "
 }
 
@@ -239,16 +385,18 @@ check_required_program
 case $1 in
 
   list)
-    sync_list_print
+  sync_list_print
   ;;
   start)
-    mirrorfy_start
+  mirrorfy_start
   ;;
   run)
-    run_once=yes
-    mirrorfy_start
+  run_once=yes
+  mirrorfy_start
   ;;
-
+  add)
+  add_sync_directory $@
+  ;;
   *)
 
   help
