@@ -1,0 +1,11 @@
+[sec2]
+local_dir=/home/ahmet/tmp
+remote_address=example.ahmetozer.org
+remote_dir=/project1/
+remote_port=629
+rsync_arguments=
+
+[sec3]
+local_dir=/home/ahmet/tmp2
+remote_address=example2.ahmetozer.org
+remote_dir=/project1/
