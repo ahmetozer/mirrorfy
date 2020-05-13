@@ -199,7 +199,7 @@ add_sync_directory() {
       shift
       shift
       ;;
-      -s|--sync-name)
+      -n|--name)
       sync_name=$2
       shift
       shift
@@ -373,8 +373,8 @@ help() {
   -p remote_port
   -r rsync_arguments
   -l local_dir
-  EX. $0 add project1 -l /home/ahmet/project1 -d /home/backup/project1 -a 1.1.1.1
-  $0 add project1 -d /home/backup/project1 -a 1.1.1.1 -p 24
+  EX. $0 add -n project1 -l /home/ahmet/project1 -d /home/backup/project1 -a 1.1.1.1
+  $0 add -n project1 -d /home/backup/project1 -a 1.1.1.1 -p 24
   "
 }
 

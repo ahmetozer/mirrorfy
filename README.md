@@ -34,8 +34,8 @@ chmod +x /usr/bin/mirrorfy
 Config name.  
 Ex. `mirrorfy add -n project1`
 - **<span style="color:#FC427B">-a<span/>**  
-Remote server address  
-Ex. `mirrorfy add -a 1.1.1.1`
+Remote server address. You can also define custom user.
+Ex. `mirrorfy add -a 1.1.1.1` `mirrorfy add -a ahmet@1.1.1.1`
 - **<span style="color:#FC427B">-d<span/>**  
 Remote server directory  
 Ex. `mirrorfy add -d /my/remote/directory`
@@ -55,7 +55,7 @@ Ex. `mirrorfy add -r "-avzhp"`
 #### **Example Commands**
 ```bash
 mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir
-mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir -p 68
-mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir -l /my/local/dir/
+mirrorfy add -n myproject1 -a ahmet@mirrorfy.ahmetozer.org -d /my/remote/dir -p 68
+mirrorfy add -n myproject1 -a sync@mirrorfy.ahmetozer.org -d /my/remote/dir -l /my/local/dir/
 mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir -p 99 -l /my/local/directory/
 ```
