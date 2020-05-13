@@ -29,7 +29,7 @@ chmod +x /usr/bin/mirrorfy
 ### add
 `mirrorfy add`
   Add locations to mirrorfy config list.
-  This functions has a some flags. Some ones required and showed with **<span style="color:#FC427B">color<span/>**.
+  This functions has a some flags. Some ones required and showed with **<span style="color:#FC427B">bold<span/>**.
 - **<span style="color:#FC427B">-n<span/>**  
 Config name.  
 Ex. `mirrorfy add -n project1`
@@ -39,15 +39,15 @@ Ex. `mirrorfy add -a 1.1.1.1`
 - **<span style="color:#FC427B">-d<span/>**  
 Remote server directory  
 Ex. `mirrorfy add -d /my/remote/directory`
-- **-l**  
+- -l  
 Local directory.
 If it is not defined, program will be select current working directory.  
 Ex. `mirrorfy add -l /my/sync/dir`
-- **-p**  
+- -p  
 Custom ssh port.
 Normally ssh uses port number 22 but if you changed to another port, you have to inform about to program with -p flag.  
 Ex. `mirrorfy add -p 422`
-- **-r**  
+- -r   
 Custom rsync arguments.
 Mirrorfy  is uses "-avzhp --delete" arguments for rsync, but if you want to use custom arguments you can define with -r flag. **Note:** Do not forget to use **"** while writing rsync arguments.  
 Ex. `mirrorfy add -r "-avzhp"`
