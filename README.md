@@ -53,7 +53,7 @@ Mirrorfy  is uses "-avzhp --delete" arguments for rsync, but if you want to use 
 Ex. `mirrorfy add -r "-avzhp"`
 
 #### **Example Commands**
-```Bash
+```bash
 mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir
 mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir -p 68
 mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir -l /my/local/dir/
