@@ -124,15 +124,15 @@ folder_watch_daemon() {
   local remote_dir_local=$remote_dir
   local remote_port_local=$remote_port
   local rsync_arguments_local
-  IFS=' ' read -a rsync_arguments_local <<< "$rsync_arguments"
+  IFS=' ' read -a rsync_arguments_local <<< $rsync_arguments
 
   if [ "$run_once" == "yes" ]
   then
-    rsync ${rsync_arguments_local} -e "ssh -p $remote_port_local" $local_dir_local $remote_address:$remote_dir
+   rsync ${rsync_arguments_local[@]}  -e "ssh -p $remote_port_local" $local_dir_local $remote_address:$remote_dir
   else
     while inotifywait -r -q -e modify,create,delete,move $local_dir_local
     do
-      rsync ${rsync_arguments_local} -e "ssh -p $remote_port_local" $local_dir_local $remote_address_local:$remote_dir_local
+      rsync ${rsync_arguments_local[@]} -e "ssh -p $remote_port_local" $local_dir_local $remote_address_local:$remote_dir_local
     done
   fi
 }
