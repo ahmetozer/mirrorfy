@@ -101,9 +101,20 @@ check_required_program() {
 
 sync_list() {
   if test -f "mirrorfy.list"; then
-    echo "$(pwd)/mirrorfy.list"
+    echo "$(pwd)/.mirrorfy.list"
   else
     echo "$HOME/.mirrorfy.list"
+  fi
+}
+check_sync_list() {
+  if test -f "mirrorfy.list"; then
+    echo "$(pwd)/.mirrorfy.list"
+  else
+    if test -f "$HOME/.mirrorfy.list"; then
+      echo "$HOME/.mirrorfy.list"
+    else
+      echo "Config is not found."
+    fi
   fi
 }
 
@@ -287,7 +298,7 @@ add_sync_directory() {
       remote_address=$remote_address
       remote_dir=$remote_dir
       remote_port=$remote_port
-      rsync_arguments=$rsync_arguments" >> `sync_list`
+      rsync_arguments=\"$rsync_arguments\"" >> `sync_list`
     else
       echo "Config aborted"
     fi
@@ -379,7 +390,14 @@ help() {
 }
 
 check_required_program
-
+if [ ! -z $1 ] && ([ $1 == "list" ] || [ $1 == "start" ] || [ $1 == "run" ])
+then
+  if [ "Config is not found." == "`check_sync_list`" ]
+  then
+    check_sync_list
+    exit 1
+  fi
+fi
 ####
 # Command line argument parser
 ####
