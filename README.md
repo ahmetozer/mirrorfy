@@ -59,3 +59,18 @@ mirrorfy add -n myproject1 -a ahmet@mirrorfy.ahmetozer.org -d /my/remote/dir -p 
 mirrorfy add -n myproject1 -a sync@mirrorfy.ahmetozer.org -d /my/remote/dir -l /my/local/dir/
 mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir -p 99 -l /my/local/directory/
 ```
+
+## Add startup
+### Windows
+
+##### Open windows task scheduler and create new task
+<img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_1.png?raw=true" alt="Create Basic Task" onerror="this.src='doc/image/win_1.png';" />  
+
+##### Set Trigger to Logon
+<img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_2.png?raw=true" alt="Trigger" onerror="this.src='doc/image/win_2.png';" />  
+
+##### Select Action
+<img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_3.png?raw=true" alt="Action" onerror="this.src='doc/image/win_3.png';" />   
+
+##### Start mirrorfy with bash `-c "SCREENDIR=$HOME/.screen screen -S sync1 -dm mirrorfy start"`
+<img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_4.png?raw=true" alt="Start a Program" onerror="this.src='doc/image/win_4.png';" />
