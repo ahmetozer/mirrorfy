@@ -258,13 +258,13 @@ add_sync_directory() {
 
   if [ -z $remote_dir ];
   then
-    echo "remote_dir is does not defined"
+    echo "remote_dir is does not defined, define with -d flag"
     exit_err+=("err-add-remote-dir-not-defined")
   fi
 
   if [ -z $remote_address ];
   then
-    echo "remote_address is does not defined"
+    echo "remote_address is does not defined, define with -a flag."
     exit_err+=("err-add-remote-address-not-defined")
   fi
 
