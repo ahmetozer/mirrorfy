@@ -395,7 +395,7 @@ EOF
 chmod +x ~/.config/autostart/mirrorfy.desktop
     fi
     ;;
-    unregistar)
+    unregister)
     if is_windows
     then
       mirrorfy_windows_service_unregister
@@ -405,7 +405,7 @@ chmod +x ~/.config/autostart/mirrorfy.desktop
     ;;
     *)
     echo "err $1 is unknown flag.
-    Please use start, restart, stop, register or unregistar  Aborted ..."
+    Please use start, restart, stop, register or unregister  Aborted ..."
     exit 1
     ;;
   esac
@@ -449,8 +449,12 @@ help() {
   -p remote_port
   -r rsync_arguments
   -l local_dir
-  EX. $0 add -n project1 -l /home/ahmet/project1 -d /home/backup/project1 -a 1.1.1.1
+  Ex. $0 add -n project1 -l /home/ahmet/project1 -d /home/backup/project1 -a 1.1.1.1
   $0 add -n project1 -d /home/backup/project1 -a 1.1.1.1 -p 24
+
+  $0 service <register,unregister,start,stop,restart>
+  Ex. $0 service register
+  $0 service start
   "
 }
 
