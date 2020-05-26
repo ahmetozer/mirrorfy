@@ -3,6 +3,8 @@
 ###
 # Get program run dir , Check Debug is enabled, export Script name
 ###
+mkdir -p /tmp/mirrorfy
+cd /tmp/mirrorfy
 program_run_dir="$HOME/.mirrorfy"
 export mirrorfy_script_name="$0"
 #debug="on"
@@ -357,7 +359,70 @@ mirrorfy_start() {
   done
 }
 
+is_windows() {
+  uname -r | grep -i microsoft
+}
 
+service() {
+  case "$1" in
+    start)
+    SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+    ;;
+    restart)
+    SCREENDIR=$HOME/.screen screen -X -S mirrorfy quit
+    SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+    ;;
+    stop)
+    SCREENDIR=$HOME/.screen screen -X -S mirrorfy quit
+    ;;
+    register)
+    if ! screen ssh 2>/dev/null
+    then
+      echo >&2 "screen is required but it's not installed. Please install screen"; err_on_exit="yes"
+    fi
+    if is_windows
+    then
+      mirrorfy_windows_service_register
+    else
+      mkdir ~/.config/autostart
+      cat <<EOF>> ~/.config/autostart/mirrorfy.desktop
+      [Desktop Entry]
+Type=Application
+Name=mirrorfy
+Exec=SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+Comment=Copy your files to server
+EOF
+chmod +x ~/.config/autostart/mirrorfy.desktop
+    fi
+    ;;
+    unregistar)
+    if is_windows
+    then
+      mirrorfy_windows_service_unregister
+    else
+      rm ~/.config/autostart/mirrorfy.desktop
+    fi
+    ;;
+    *)
+    echo "err $1 is unknown flag.
+    Please use start, restart, stop, register or unregistar  Aborted ..."
+    exit 1
+    ;;
+  esac
+  if [ -z $exit_err ]
+  then
+    exit 1
+  fi
+
+}
+
+mirrorfy_windows_service_register() {
+  schtasks.exe  /Create /SC ONLOGON /TN mirrorfy /TR 'bash -c "SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start"' /f
+
+}
+mirrorfy_windows_service_unregister() {
+schtasks.exe /delete /tn "mirrorfy" /f
+}
 ####
 # Help function
 ####
@@ -416,6 +481,10 @@ case $1 in
   ;;
   add)
   add_sync_directory $@
+  ;;
+  service)
+  shift 1
+  service $@
   ;;
   *)
 
