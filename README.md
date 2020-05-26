@@ -62,21 +62,26 @@ mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir -p 99 -l 
 
 ### service
 `mirrorfy service` You can control mirrorfy service on your linux or windows machine
-- start
+- start  
 Start mirrorfy service
-- stop
+- stop  
 Stop mirrorfy service
-- restart
+- restart  
 Restart mirrorfy service
-- register
+- register  
 Add mirrorfy to startup in linux or Create task in Windows
-- unregister
+- unregister  
 Delete mirrorfy at startup in linux or Delete task in Windows
 
 
 ## Add startup
-### Windows
 
+### Linux
+Run `mirrorfy service register` to add mirrorfy startup folder.
+### Windows
+#### By script
+Run `mirrorfy service register` to create task automatically
+#### Manual
 ##### Open windows task scheduler and create new task
 <img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_1.png?raw=true" alt="Create Basic Task" onerror="this.src='doc/image/win_1.png';" />  
 
