@@ -233,6 +233,12 @@ add_sync_directory() {
     then
       echo "sync name has a unknow characters  != $sync_name"
       exit_err+=("err-add-sync-name-wrong")
+    else
+      if is_sync_added $sync_name
+      then
+        echo "$sync_name is already added"
+        exit_err+=("err-add-sync-name-exist")
+      fi
     fi
   fi
 
@@ -336,6 +342,23 @@ sync_list_print() {
     else
       echo "    rsync_arguments $rsync_arguments"
     fi
+    unset local_dir remote_address remote_dir remote_port rsync_arguments
+
+  done < <(declare -F | grep "mirrorfy.sync" |sed 's/declare -f //')
+}
+
+is_sync_added() {
+  load_ini `sync_list`
+  while read -r line
+  do
+    current_name=`printf "$line" | sed 's/mirrorfy.sync.//'`
+    if [ "$1" == "$current_name" ]
+    then
+      return 0
+    else
+      return 1
+    fi
+
     unset local_dir remote_address remote_dir remote_port rsync_arguments
 
   done < <(declare -F | grep "mirrorfy.sync" |sed 's/declare -f //')
