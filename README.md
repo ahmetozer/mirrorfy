@@ -60,6 +60,20 @@ mirrorfy add -n myproject1 -a sync@mirrorfy.ahmetozer.org -d /my/remote/dir -l /
 mirrorfy add -n myproject1 -a mirrorfy.ahmetozer.org -d /my/remote/dir -p 99 -l /my/local/directory/
 ```
 
+### service
+`mirrorfy service` You can control mirrorfy service on your linux or windows machine
+- start
+Start mirrorfy service
+- stop
+Stop mirrorfy service
+- restart
+Restart mirrorfy service
+- register
+Add mirrorfy to startup in linux or Create task in Windows
+- unregister
+Delete mirrorfy at startup in linux or Delete task in Windows
+
+
 ## Add startup
 ### Windows
 
