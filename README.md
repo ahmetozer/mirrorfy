@@ -5,9 +5,17 @@ It's upload files to server every change.
 
 ## install
 ```Bash
-curl https://mirrorfy.ahmetozer.org/mirrorfy -o /usr/bin/mirrorfy
-chmod +x /usr/bin/mirrorfy
+sudo curl https://mirrorfy.ahmetozer.org/mirrorfy -o /usr/bin/mirrorfy
+sudo chmod +x /usr/bin/mirrorfy
 ```
+
+## install dependencies
+```bash
+# For ubuntu or Ubuntu on WSL
+sudo apt install inotify-tools openssh rsync screen
+```
+
+
 
 ## Commands
 
