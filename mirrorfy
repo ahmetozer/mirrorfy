@@ -406,7 +406,7 @@ mirrorfy_start() {
 }
 
 is_windows() {
-  uname -r | grep -i microsoft
+  uname -r | grep -i microsoft > /dev/null
 }
 
 service() {
@@ -432,24 +432,7 @@ service() {
     SCREENDIR=$HOME/.screen screen -X -S mirrorfy quit
     ;;
   register)
-    if ! screen ssh 2>/dev/null; then
-      echo >&2 "screen is required but it's not installed. Please install screen"
-      err_on_exit="yes"
-    fi
-    if is_windows; then
-      mirrorfy_windows_service_register
-    else
-      mkdir ~/.config/autostart
-      cat <<EOF >>~/.config/autostart/mirrorfy.desktop
-            [Desktop Entry]
-            Type=Application
-            Name=mirrorfy
-            Exec=SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
-            Comment=Copy your files to server
-EOF
-      chmod +x ~/.config/autostart/mirrorfy.desktop
-    fi
-    ;;
+    mirrorfy_service_register
   unregister)
     if is_windows; then
       mirrorfy_windows_service_unregister
@@ -473,6 +456,28 @@ EOF
       fi
   fi
 
+}
+
+
+mirrorfy_service_register() {
+  if ! screen ssh 2>/dev/null; then
+      echo >&2 "screen is required but it's not installed. Please install screen"
+      err_on_exit="yes"
+    fi
+    if is_windows; then
+      mirrorfy_windows_service_register
+    else
+      mkdir ~/.config/autostart
+      cat <<EOF >>~/.config/autostart/mirrorfy.desktop
+            [Desktop Entry]
+            Type=Application
+            Name=mirrorfy
+            Exec=SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+            Comment=Copy your files to server
+EOF
+      chmod +x ~/.config/autostart/mirrorfy.desktop
+    fi
+    ;;
 }
 
 mirrorfy_windows_service_register() {
@@ -521,6 +526,23 @@ help() {
         "
 }
 
+one_click_install() {
+sudo apt update
+sudo apt install inotify-tools openssh rsync screen nano
+mirrorfy_service_register
+SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+}
+
+edit_mirrorfy() {
+  sync_list_var=`sync_list`
+  if is_windows
+  then
+    notepad.exe `wslpath -w $sync_list_var`
+  else
+    nano $sync_list_var
+  fi
+}
+
 check_required_program
 
 if [ ! -z $1 ] && ([ $1 == "list" ] || [ $1 == "start" ] || [ $1 == "run" ]); then
@@ -551,6 +573,9 @@ service)
   shift 1
   service $@
   ;;
+edit)
+  edit_mirrorfy
+  ;;  
 "")
   echo "Mirrorfy: Hello again. 
 Here is some services"
@@ -588,6 +613,9 @@ Here is some services"
     service)
       shift 1
       service $@
+      ;;
+    edit)
+      edit_mirrorfy
       ;;
     *)
       echo "ERR. Command not found"
