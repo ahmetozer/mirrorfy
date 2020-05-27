@@ -9,11 +9,8 @@ sudo curl https://mirrorfy.ahmetozer.org/mirrorfy -o /usr/bin/mirrorfy
 sudo chmod +x /usr/bin/mirrorfy
 ```
 
-<<<<<<< HEAD
+
 ## install dependencies
-=======
-## install depencies
->>>>>>> da05393bf1b8753a86e14ad2d56d85e142898d5b
 ```bash
 # For ubuntu or Ubuntu on WSL
 sudo apt install inotify-tools openssh rsync screen
