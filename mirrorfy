@@ -433,6 +433,8 @@ service() {
     ;;
   register)
     mirrorfy_service_register
+    ;;
+
   unregister)
     if is_windows; then
       mirrorfy_windows_service_unregister
@@ -477,7 +479,6 @@ mirrorfy_service_register() {
 EOF
       chmod +x ~/.config/autostart/mirrorfy.desktop
     fi
-    ;;
 }
 
 mirrorfy_windows_service_register() {
