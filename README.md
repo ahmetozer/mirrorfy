@@ -9,14 +9,11 @@ sudo curl https://mirrorfy.ahmetozer.org/mirrorfy -o /usr/bin/mirrorfy
 sudo chmod +x /usr/bin/mirrorfy
 ```
 
-
 ## install dependencies
 ```bash
 # For ubuntu or Ubuntu on WSL
 sudo apt install inotify-tools openssh rsync screen
 ```
-
-
 
 ## Commands
 
@@ -102,3 +99,8 @@ Run `mirrorfy service register` to create task automatically
 
 ##### Start mirrorfy with bash `-c "SCREENDIR=$HOME/.screen screen -S sync1 -dm mirrorfy start"`
 <img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_4.png?raw=true" alt="Start a Program" onerror="this.src='doc/image/win_4.png';" />
+
+---
+**Note:**
+You have to create SSH keys on your pc and upload this keys to your server.
+After uploading ssh key, Please make test connection to your server before adding mirrorfy. You can found more information to creating ssh key and upload, Please visit  [ahmetozer.org](https://ahmetozer.org/Push-files-to-server-every-change-Alternative-use-samba-or-ftp-to-realtime-sync.html)
