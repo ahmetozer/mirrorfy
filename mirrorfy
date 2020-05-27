@@ -91,6 +91,14 @@ check_required_program() {
   fi
 }
 
+run_on_win() {
+  CMD=$1
+  shift;
+  ARGS=$@
+  WIN_PWD=`wslpath -w "$(pwd)"`
+  cmd.exe /c "pushd ${WIN_PWD} && ${CMD} ${ARGS}"
+}
+
 sync_list() {
   if test -f "mirrorfy.list"; then
     echo "$(pwd)/mirrorfy.list"
@@ -408,7 +416,17 @@ service() {
     ;;
   restart)
     SCREENDIR=$HOME/.screen screen -X -S mirrorfy quit
+    if [ $? -eq 0 ]
+    then
+      echo "Mirrorfy Successfully stopped"
+    else
+      SCREENDIR=$HOME/.screen screen -wipe
+    fi
     SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+    if [ $? -eq 0 ]
+    then
+      echo "Mirrorfy Started"
+    fi
     ;;
   stop)
     SCREENDIR=$HOME/.screen screen -X -S mirrorfy quit
@@ -459,7 +477,11 @@ EOF
 
 mirrorfy_windows_service_register() {
   schtasks.exe /Create /SC ONLOGON /TN mirrorfy /TR 'bash -c "SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start"' /f
-
+  cat <<EOF >>deneme.bat
+echo @echo off > %WINDIR%\system32\mirrorfy.bat
+echo bash -c "mirrorfy %%*" >> %WINDIR%\system32\mirrorfy.bat
+EOF
+run_on_win deneme.bat
 }
 mirrorfy_windows_service_unregister() {
   schtasks.exe /delete /tn "mirrorfy" /f
@@ -536,11 +558,17 @@ Here is some services"
   while true; do
     unset noargstart
     unset noargstartarray
+    
     read -p 'What do you want ? » ' -e noargstart
+    if [ -z "$noargstart" ]
+    then
+    noargstart="empty"
+    fi
     export loopMirrorfy="true"
-    for word in $noargstart; do
-      noargstartarray+=($word)
-    done
+    #for word in $noargstart; do
+    #  noargstartarray+=($word)
+    #done
+    noargstartarray=($(echo $noargstart | tr " " "\n"))
     set ${noargstartarray[@]}
     echo "0 $0 - 1 $1 - 2 $2"
     case $1 in
