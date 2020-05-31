@@ -4,6 +4,9 @@ This project created for manage rsync directories.
 It's upload files to server every change.
 
 ## install
+
+Currently Supports most of the linux computers, WSL1 and WSL2
+Tested on WSL1 and WSL2.
 ```Bash
 sudo curl https://mirrorfy.ahmetozer.org/mirrorfy -o /usr/bin/mirrorfy
 sudo chmod +x /usr/bin/mirrorfy
