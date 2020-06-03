@@ -495,7 +495,7 @@ mirrorfy_windows_service_register() {
   schtasks.exe /Create /SC ONLOGON /TN mirrorfy /TR 'bash -c "SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start"' /f
   cat <<EOF >>deneme.bat
 echo @echo off > %WINDIR%\system32\mirrorfy.bat
-echo wsl.exe -d $WSL_DISTRO_NAME "mirrorfy %%*" >> %WINDIR%\system32\mirrorfy.bat
+echo wsl.exe -d $WSL_DISTRO_NAME mirrorfy %%* >> %WINDIR%\system32\mirrorfy.bat
 EOF
 run_on_win deneme.bat
 }
