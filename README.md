@@ -5,8 +5,10 @@ It's upload files to server every change.
 
 ## install
 
-Currently Supports most of the linux computers, WSL1 and WSL2
-Tested on WSL1 and WSL2.
+Currently Supports most of the linux computers, WSL1
+Tested on WSL1.
+
+Currently WSL2 not supported yet but i will work on it.
 ```Bash
 sudo curl https://mirrorfy.ahmetozer.org/mirrorfy -o /usr/bin/mirrorfy
 sudo chmod +x /usr/bin/mirrorfy
