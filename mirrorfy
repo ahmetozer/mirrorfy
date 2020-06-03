@@ -348,6 +348,11 @@ add_sync_directory() {
 }
 
 sync_list_print() {
+  if [ "Config is not found." == "$(check_sync_list)" ]; then
+    check_sync_list
+    return
+  fi
+
   load_ini $(sync_list)
   echo "Sync file $(sync_list)
         "
@@ -390,6 +395,11 @@ is_sync_added() {
 
 mirrorfy_start() {
   echo "Starting mirrorfy deamon"
+
+  if [ "Config is not found." == "$(check_sync_list)" ]; then
+    check_sync_list
+    return
+  fi
 
   load_ini $(sync_list)
 
@@ -485,7 +495,7 @@ mirrorfy_windows_service_register() {
   schtasks.exe /Create /SC ONLOGON /TN mirrorfy /TR 'bash -c "SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start"' /f
   cat <<EOF >>deneme.bat
 echo @echo off > %WINDIR%\system32\mirrorfy.bat
-echo bash -c "mirrorfy %%*" >> %WINDIR%\system32\mirrorfy.bat
+echo wsl.exe -d $WSL_DISTRO_NAME "mirrorfy %%*" >> %WINDIR%\system32\mirrorfy.bat
 EOF
 run_on_win deneme.bat
 }
@@ -546,12 +556,7 @@ edit_mirrorfy() {
 
 check_required_program
 
-if [ ! -z $1 ] && ([ $1 == "list" ] || [ $1 == "start" ] || [ $1 == "run" ]); then
-  if [ "Config is not found." == "$(check_sync_list)" ]; then
-    check_sync_list
-    exit 1
-  fi
-fi
+
 ####
 # Command line argument parser
 ####
