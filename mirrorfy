@@ -395,22 +395,12 @@ is_sync_added() {
 
 mirrorfy_start() {
   echo "Starting mirrorfy deamon"
-
-  if [ -f "pid" ]; then
-    if  kill -0 `cat pid` > /dev/null 2>&1; then
-        echo "Mirrorfy is already running"
-        return
-    else
-        echo "Warn: Mirrorfy not well closed" >&2
-    fi
-  fi
-    echo $$ > pid 
-    trap mirrorfy_start_exit_trap INT EXIT
-  if [ "Config is not found." == "$(check_sync_list)" ]; then
-    check_sync_list
-    return
+  if ! mirrorfy_start_pre_control; then
+      return
   fi
 
+  echo $$ > pid 
+  trap mirrorfy_start_exit_trap INT EXIT
   load_ini $(sync_list)
 
   while read -r line; do
@@ -423,6 +413,21 @@ mirrorfy_start() {
   for pid in ${pids[*]}; do
     wait $pid
   done
+}
+
+mirrorfy_start_pre_control(){
+  if [ -f "pid" ]; then
+    if  kill -0 `cat pid` > /dev/null 2>&1; then
+        echo "Mirrorfy is already running"
+        return 1
+    else
+        echo "Warn: Mirrorfy not well closed" >&2
+    fi
+  fi
+  if [ "Config is not found." == "$(check_sync_list)" ]; then
+    check_sync_list
+    return 1
+  fi
 }
 
 mirrorfy_start_exit_trap() {
@@ -461,20 +466,29 @@ is_windows() {
 service() {
   case "$1" in
   start)
-    SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
-    ;;
-  restart)
-    mirrorfy_stop
-    if [ $? -eq 0 ]
-    then
-      echo "Mirrorfy Successfully stopped"
-    else
-      SCREENDIR=$HOME/.screen screen -wipe
+    if ! mirrorfy_start_pre_control; then
+      return
     fi
     SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
     if [ $? -eq 0 ]
     then
       echo "Mirrorfy Started"
+    else
+      echo "Mirrorfy cannot started"
+    fi
+    ;;
+  restart)
+    mirrorfy_stop
+    sleep 1 #give a time
+    if ! mirrorfy_start_pre_control; then
+      return
+    fi
+    SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+    if [ $? -eq 0 ]
+    then
+      echo "Mirrorfy Started"
+    else
+      echo "Mirrorfy cannot started"
     fi
     ;;
   stop)
@@ -532,11 +546,12 @@ EOF
 
 mirrorfy_windows_service_register() {
   schtasks.exe /Create /SC ONLOGON /TN mirrorfy /TR 'mirrorfy.bat service start' /f
-  cat <<EOF >>deneme.bat
+  cat <<EOF >>mirrorfy_windows_service_register.bat
 echo @echo off > %WINDIR%\system32\mirrorfy.bat
 echo wsl.exe -d $WSL_DISTRO_NAME mirrorfy %%* >> %WINDIR%\system32\mirrorfy.bat
 EOF
-run_on_win deneme.bat
+run_on_win mirrorfy_windows_service_register.bat
+rm mirrorfy_windows_service_register.bat
 }
 mirrorfy_windows_service_unregister() {
   schtasks.exe /delete /tn "mirrorfy" /f
@@ -643,7 +658,7 @@ Here is some services"
     #done
     noargstartarray=($(echo $noargstart | tr " " "\n"))
     set ${noargstartarray[@]}
-    echo "0 $0 - 1 $1 - 2 $2"
+    #echo "0 $0 - 1 $1 - 2 $2"
     case $1 in
     list)
       sync_list_print
