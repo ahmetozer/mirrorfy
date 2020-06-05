@@ -3,9 +3,9 @@
 ###
 # Get program run dir , Check Debug is enabled, export Script name
 ###
-mkdir -p /tmp/mirrorfy
+mkdir -p /tmp/mirrorfy/$USER
 CURR_DIR=$PWD
-cd /tmp/mirrorfy
+cd /tmp/mirrorfy/$USER
 program_run_dir="$HOME/.mirrorfy"
 export mirrorfy_script_name="$0"
 #debug="on"
@@ -396,6 +396,16 @@ is_sync_added() {
 mirrorfy_start() {
   echo "Starting mirrorfy deamon"
 
+  if [ -f "pid" ]; then
+    if  kill -0 `cat pid` > /dev/null 2>&1; then
+        echo "Mirrorfy is already running"
+        return
+    else
+        echo "Warn: Mirrorfy not well closed" >&2
+    fi
+  fi
+    echo $$ > pid 
+    trap mirrorfy_start_exit_trap INT EXIT
   if [ "Config is not found." == "$(check_sync_list)" ]; then
     check_sync_list
     return
@@ -415,6 +425,35 @@ mirrorfy_start() {
   done
 }
 
+mirrorfy_start_exit_trap() {
+  if [ -f "pid" ]; then
+  echo "Exiting ..."
+  rm pid
+  fi
+}
+
+mirrorfy_stop() {
+echo "Stopping mirrorfy"
+
+  if [ -f "pid" ]; then
+    mirrorfy_kill_pid=`cat pid`
+    if  kill -0 $mirrorfy_kill_pid > /dev/null 2>&1; then
+        if ! kill $mirrorfy_kill_pid > /dev/null 2>&1; then
+         echo Error: Could not send SIGTERM to process $mirrorfy_kill_pid >&2
+         else
+          return
+        fi
+        echo Info: SIGKILL sent to process $mirrorfy_kill_pid
+        kill -9 $mirrorfy_kill_pid
+    else
+        echo "Warn: Mirrorfy not well closed" >&2
+        rm pid
+    fi
+    else 
+    echo "Mirrorfy is not running."
+  fi
+}
+
 is_windows() {
   uname -r | grep -i microsoft > /dev/null
 }
@@ -425,7 +464,7 @@ service() {
     SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
     ;;
   restart)
-    SCREENDIR=$HOME/.screen screen -X -S mirrorfy quit
+    mirrorfy_stop
     if [ $? -eq 0 ]
     then
       echo "Mirrorfy Successfully stopped"
@@ -439,7 +478,7 @@ service() {
     fi
     ;;
   stop)
-    SCREENDIR=$HOME/.screen screen -X -S mirrorfy quit
+    mirrorfy_stop
     ;;
   register)
     mirrorfy_service_register
@@ -492,7 +531,7 @@ EOF
 }
 
 mirrorfy_windows_service_register() {
-  schtasks.exe /Create /SC ONLOGON /TN mirrorfy /TR 'bash -c "SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start"' /f
+  schtasks.exe /Create /SC ONLOGON /TN mirrorfy /TR 'mirrorfy.bat service start' /f
   cat <<EOF >>deneme.bat
 echo @echo off > %WINDIR%\system32\mirrorfy.bat
 echo wsl.exe -d $WSL_DISTRO_NAME mirrorfy %%* >> %WINDIR%\system32\mirrorfy.bat
@@ -567,6 +606,9 @@ list)
   ;;
 start)
   mirrorfy_start
+  ;;
+stop)
+  mirrorfy_stop
   ;;
 run)
   run_once=yes
