@@ -5,10 +5,10 @@ It's upload files to server every change.
 
 ## install
 
-Currently Supports most of the linux computers, WSL1
-Tested on WSL1.
+Currently Supports most of the linux computers, WSL1  
+Tested on WSL1 Ubuntu and Debian.
 
-Currently WSL2 not supported yet but i will work on it.
+Currently WSL2 not supported.
 ```Bash
 sudo curl https://mirrorfy.ahmetozer.org/mirrorfy -o /usr/bin/mirrorfy
 sudo chmod +x /usr/bin/mirrorfy
@@ -89,21 +89,11 @@ Delete mirrorfy at startup in linux or Delete task in Windows
 
 ### Linux
 Run `mirrorfy service register` to add mirrorfy startup folder.
+
 ### Windows
-#### By script
-Run `mirrorfy service register` to create task automatically
-#### Manual
-##### Open windows task scheduler and create new task
-<img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_1.png?raw=true" alt="Create Basic Task" onerror="this.src='doc/image/win_1.png';" />  
 
-##### Set Trigger to Logon
-<img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_2.png?raw=true" alt="Trigger" onerror="this.src='doc/image/win_2.png';" />  
+Run cmd as Administrator and enter to WSL enviroment with wsl command, then execute `mirrorfy service register` command to register Mirrorfy service on windows.
 
-##### Select Action
-<img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_3.png?raw=true" alt="Action" onerror="this.src='doc/image/win_3.png';" />   
-
-##### Start mirrorfy with bash `-c "SCREENDIR=$HOME/.screen screen -S sync1 -dm mirrorfy start"`
-<img src="https://github.com/ahmetozer/mirrorfy/blob/master/doc/image/win_4.png?raw=true" alt="Start a Program" onerror="this.src='doc/image/win_4.png';" />
 
 ---
 **Note:**
