@@ -13,7 +13,7 @@ if [ ! -z $debug ]; then
   if [ "$debug" = "on" ]; then
     set -x
   else
-    echo "You are define debug variable but this variable is not equal to on. Dobug is aborted."
+    echo "You are define debug variable but this variable is not equal to on. Debug is aborted."
   fi
 fi
 
@@ -101,7 +101,7 @@ run_on_win() {
 
 sync_list() {
   if test -f "mirrorfy.list"; then
-    echo "$(pwd)/mirrorfy.list"
+    echo "$(CURR_DIR)/mirrorfy.list"
   else
     echo "$HOME/.mirrorfy.list"
   fi
@@ -113,7 +113,7 @@ check_sync_list() {
     if test -f "$HOME/.mirrorfy.list"; then
       echo "$HOME/.mirrorfy.list"
     else
-      echo "Config is not found."
+      echo "Config is not found. $HOME/.mirrorfy.list"
     fi
   fi
 }
@@ -126,12 +126,17 @@ folder_watch_daemon() {
   local rsync_arguments_local
   IFS=' ' read -a rsync_arguments_local <<<$rsync_arguments
 
+  trap mirrorfy_start_exit_trap INT EXIT
+  pids[${pids_count}]=$$
+  pids_count=$((pids_count + 1))
+  
   if [ "$run_once" == "yes" ]; then
     rsync ${rsync_arguments_local[@]} -e "ssh -p $remote_port_local" $local_dir_local $remote_address:$remote_dir
   else
     while inotifywait -r -q -e modify,create,delete,move $local_dir_local; do
       rsync ${rsync_arguments_local[@]} -e "ssh -p $remote_port_local" $local_dir_local $remote_address_local:$remote_dir_local
     done
+    wait $$
   fi
 }
 
@@ -418,7 +423,8 @@ mirrorfy_start() {
 mirrorfy_start_pre_control(){
   if [ -f "pid" ]; then
     if  kill -0 `cat pid` > /dev/null 2>&1; then
-        echo "Mirrorfy is already running"
+        echo "Mirrorfy is already running
+        $PWD/pid"
         return 1
     else
         echo "Warn: Mirrorfy not well closed" >&2
@@ -435,6 +441,8 @@ mirrorfy_start_exit_trap() {
   echo "Exiting ..."
   rm pid
   fi
+  PGID=$( ps -o pgid= $$ | tr -d \  ); kill -TERM -$PGID
+  #kill $$
 }
 
 mirrorfy_stop() {
@@ -463,13 +471,13 @@ is_windows() {
   uname -r | grep -i microsoft > /dev/null
 }
 
-service() {
+mirrorfy_service() {
   case "$1" in
   start)
-    if ! mirrorfy_start_pre_control; then
-      return
-    fi
-    SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+    # if ! mirrorfy_start_pre_control; then
+    #   return
+    # fi
+    service mirrorfy start
     if [ $? -eq 0 ]
     then
       echo "Mirrorfy Started"
@@ -478,31 +486,36 @@ service() {
     fi
     ;;
   restart)
-    mirrorfy_stop
+    #mirrorfy_stop
     sleep 1 #give a time
-    if ! mirrorfy_start_pre_control; then
-      return
-    fi
-    SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+    # if ! mirrorfy_start_pre_control; then
+    #   return
+    # fi
+    service mirrorfy stop
+    echo "Mirrorfy Service Stopped"
+    service mirrorfy start
     if [ $? -eq 0 ]
     then
-      echo "Mirrorfy Started"
+      echo "Mirrorfy Service Started"
     else
       echo "Mirrorfy cannot started"
     fi
     ;;
   stop)
-    mirrorfy_stop
+    service mirrorfy stop
     ;;
   register)
     mirrorfy_service_register
     ;;
 
   unregister)
+      systemctl disable mirrorfy
+      rm /etc/systemd/system/mirrorfy.service
+      rm /etc/init.d/mirrorfy
     if is_windows; then
       mirrorfy_windows_service_unregister
-    else
-      rm ~/.config/autostart/mirrorfy.desktop
+    #else
+      #rm ~/.config/autostart/mirrorfy.desktop
     fi
     ;;
   *)
@@ -525,25 +538,122 @@ service() {
 
 
 mirrorfy_service_register() {
-  if ! screen ssh 2>/dev/null; then
-      echo >&2 "screen is required but it's not installed. Please install screen"
-      err_on_exit="yes"
-    fi
+  cat <<EOF >/etc/systemd/system/mirrorfy.service
+[Unit]
+Description=Mirrorfy Service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=$USER
+ExecStart=/usr/bin/mirrorfy mirrorfy_initd_scripts start
+ExecStop=/usr/bin/mirrorfy mirrorfy_initd_scripts stop
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable mirrorfy
+
+cat <<\EOF >/etc/init.d/mirrorfy
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:             mirrorfy
+# Required-Start:       $remote_fs $syslog
+# Required-Stop:        $remote_fs $syslog
+# Default-Start:        2 3 4 5
+# Default-Stop:
+# Short-Description:    Mirrorfy Sync Service
+### END INIT INFO
+start() {
+  /usr/bin/mirrorfy mirrorfy_initd_scripts start
+}
+
+stop() {
+  /usr/bin/mirrorfy mirrorfy_initd_scripts stop
+}
+
+case "$1" in 
+    start)
+       start
+       ;;
+    stop)
+       stop
+       ;;
+    restart)
+       stop
+       start
+       ;;
+    status)
+       # code to check status of app comes here 
+       # example: status program_name
+       ;;
+    *)
+       echo "Usage: $0 {start|stop|status|restart}"
+esac
+
+exit 0 
+EOF
+
+chmod +x /etc/init.d/mirrorfy
+
+cp $CURR_DIR/$(basename $0) /usr/bin/mirrorfy
     if is_windows; then
       mirrorfy_windows_service_register
-    else
-      mkdir ~/.config/autostart
-      cat <<EOF >>~/.config/autostart/mirrorfy.desktop
-            [Desktop Entry]
-            Type=Application
-            Name=mirrorfy
-            Exec=SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
-            Comment=Copy your files to server
-EOF
-      chmod +x ~/.config/autostart/mirrorfy.desktop
+#    else
+#      mkdir ~/.config/autostart
+#      cat <<EOF >>~/.config/autostart/mirrorfy.desktop
+#            [Desktop Entry]
+#            Type=Application
+#            Name=mirrorfy
+#            Exec=SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+#            Comment=Copy your files to server
+#EOF
+#      chmod +x ~/.config/autostart/mirrorfy.desktop
     fi
 }
 
+
+mirrorfy_initd_scripts() {
+    start() {
+    #echo "Starting for"
+    while IFS= read -r p || [ -n "$p" ]
+    do
+      run_user=`echo $p| cut -d":" -f1`
+      run_user_dir=`echo $p| cut -d":" -f6`
+      if test -f "$run_user_dir/.mirrorfy.list"
+      then
+        #echo "   $run_user"
+        HOME=$run_user_dir USER=$run_user start-stop-daemon --start -q -b -u $run_user -p /tmp/mirrorfy/$USER/pid --exec /usr/bin/mirrorfy start #> /dev/null
+      fi
+    done < "/etc/passwd"
+  }
+
+  stop() {
+    #echo "Stopping for"
+    while IFS="" read -r p || [ -n "$p" ]
+    do
+      run_user=`echo $p| cut -d":" -f1`
+      run_user_dir=`echo $p| cut -d":" -f6`
+      if test -f "$run_user_dir/.mirrorfy.list"
+      then
+        #echo "   $run_user"
+        HOME=$run_user_dir USER=$run_user start-stop-daemon --start -q -u $run_user --exec /usr/bin/mirrorfy stop > /dev/null
+      fi
+    done < "/etc/passwd"
+  }
+case $1 in
+start)
+  $1
+  ;;
+stop)
+  $1
+  ;;
+  esac
+}
 mirrorfy_windows_service_register() {
   schtasks.exe /Create /SC ONLOGON /TN mirrorfy /TR 'mirrorfy.bat service start' /f
   cat <<EOF >>mirrorfy_windows_service_register.bat
@@ -593,9 +703,9 @@ help() {
 
 one_click_install() {
 sudo apt update
-sudo apt install inotify-tools openssh rsync screen nano
+sudo apt install inotify-tools openssh rsync nano
 mirrorfy_service_register
-SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+systemctl start mirrorfy
 }
 
 edit_mirrorfy() {
@@ -632,9 +742,13 @@ run)
 add)
   add_sync_directory $@
   ;;
+mirrorfy_initd_scripts)
+  shift 1
+  mirrorfy_initd_scripts $@
+  ;;
 service)
   shift 1
-  service $@
+  mirrorfy_service $@
   ;;
 edit)
   edit_mirrorfy
@@ -675,7 +789,7 @@ Here is some services"
       ;;
     service)
       shift 1
-      service $@
+      mirrorfy_service $@
       ;;
     edit)
       edit_mirrorfy
@@ -687,7 +801,6 @@ Here is some services"
   done
   ;;
 *)
-
   help
   ;;
 esac
