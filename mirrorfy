@@ -336,11 +336,12 @@ add_sync_directory() {
 
     if [ "$question" == 'yes' ]; then
       echo "[$sync_name]
-            local_dir=$local_dir
-            remote_address=$remote_address
-            remote_dir=$remote_dir
-            remote_port=$remote_port
-            rsync_arguments=\"$rsync_arguments\"" >>$(sync_list)
+  local_dir=$local_dir
+  remote_address=$remote_address
+  remote_dir=$remote_dir
+  remote_port=$remote_port
+  rsync_arguments=\"$rsync_arguments\"
+" >>$(sync_list)
     else
       echo "Config aborted"
     fi
