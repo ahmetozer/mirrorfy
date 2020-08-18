@@ -385,7 +385,12 @@ sync_list_print() {
 }
 
 is_sync_added() {
-  load_ini $(sync_list)
+  FILE=$(sync_list)
+  if [ ! -f "$FILE" ]; then
+    return 1
+  fi
+  
+  load_ini $FILE
   while read -r line; do
     current_name=$(printf "$line" | sed 's/mirrorfy.sync.//')
     if [ "$1" == "$current_name" ]; then
