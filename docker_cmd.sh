@@ -26,18 +26,20 @@ if [ ! -f "/etc/ssh/ssh_host_dsa_key" ]; then
         echo "$password
 $password" | passwd $user
     fi
-    if [ -f "/_/authorized_keys" ]; then
-        ssh_dir=$(eval echo ~$user/.ssh)
-        mkdir -p $ssh_dir
-        cat /_/authorized_keys > $ssh_dir/authorized_keys
-        chown -R $user:$user $ssh_dir
-        chmod 644 $ssh_dir/authorized_keys
-    fi
+
     ssh-keygen -A
-    cp /etc/sshd/* /etc/ssh/
+
 fi
 
+if [ -f "/authorized_keys" ]; then
+    ssh_dir=$(eval echo ~$user/.ssh)
+    mkdir -p $ssh_dir
+    cat /_/authorized_keys >$ssh_dir/authorized_keys
+    chown -R $user:$user $ssh_dir
+    chmod 644 $ssh_dir/authorized_keys
+fi
+cp /etc/sshd/* /etc/ssh/
 
-ssh_path=`command -v sshd`
+ssh_path=$(command -v sshd)
 echo "Starting sshd"
 $ssh_path -D -p $port
