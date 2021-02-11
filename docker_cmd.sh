@@ -34,8 +34,8 @@ fi
 if [ -f "/authorized_keys" ]; then
     ssh_dir=$(eval echo ~$user/.ssh)
     mkdir -p $ssh_dir
-    cat /_/authorized_keys >$ssh_dir/authorized_keys
-    chown -R $user:$user $ssh_dir
+    cat /authorized_keys >$ssh_dir/authorized_keys
+    chown -R $user $ssh_dir
     chmod 644 $ssh_dir/authorized_keys
 fi
 cp /etc/sshd/* /etc/ssh/
