@@ -29,18 +29,22 @@ pids_count=0
 # Load mirrorfy sync lists
 ###
 load_ini() {
-  fixed_file=$(cat $1 | sed 's/ = /=/g')   # fix ' = ' to be '='
-  IFS=$'\n' && ini=($fixed_file)           # convert to line-array
-  ini=(${ini[*]//;*/})                     # remove comments
-  ini=(${ini[*]/#[/\}$'\n'mirrorfy.sync.}) # set section prefix
-  ini=(${ini[*]/%]/ \(})                   # convert text2function (1)
-  ini=(${ini[*]/=/=\( })                   # convert item to array
-  ini=(${ini[*]/%/ \)})                    # close array parenthesis
-  ini=(${ini[*]/%\( \)/\(\) \{})           # convert text2function (2)
-  ini=(${ini[*]/%\} \)/\}})                # remove extra parenthesis
-  ini[0]=''                                # remove first element
-  ini[${#ini[*]} + 1]='}'                  # add the last brace
-  eval "$(echo "${ini[*]}")"               # eval the result
+  if [ -f "$1" ]; then
+    fixed_file=$(cat $1 | sed 's/ = /=/g')   # fix ' = ' to be '='
+    IFS=$'\n' && ini=($fixed_file)           # convert to line-array
+    ini=(${ini[*]//;*/})                     # remove comments
+    ini=(${ini[*]/#[/\}$'\n'mirrorfy.sync.}) # set section prefix
+    ini=(${ini[*]/%]/ \(})                   # convert text2function (1)
+    ini=(${ini[*]/=/=\( })                   # convert item to array
+    ini=(${ini[*]/%/ \)})                    # close array parenthesis
+    ini=(${ini[*]/%\( \)/\(\) \{})           # convert text2function (2)
+    ini=(${ini[*]/%\} \)/\}})                # remove extra parenthesis
+    ini[0]=''                                # remove first element
+    ini[${#ini[*]} + 1]='}'                  # add the last brace
+    eval "$(echo "${ini[*]}")"               # eval the result
+  else
+    echo "$1 cannot found"
+  fi
 }
 
 ###
@@ -93,9 +97,9 @@ check_required_program() {
 
 run_on_win() {
   CMD=$1
-  shift;
+  shift
   ARGS=$@
-  WIN_PWD=`wslpath -w "$(pwd)"`
+  WIN_PWD=$(wslpath -w "$(pwd)")
   cmd.exe /c "pushd ${WIN_PWD} && ${CMD} ${ARGS}"
 }
 
@@ -129,7 +133,7 @@ folder_watch_daemon() {
   trap mirrorfy_start_exit_trap INT EXIT
   pids[${pids_count}]=$$
   pids_count=$((pids_count + 1))
-  
+
   if [ "$run_once" == "yes" ]; then
     rsync ${rsync_arguments_local[@]} -e "ssh -p $remote_port_local" $local_dir_local $remote_address:$remote_dir
   else
@@ -389,7 +393,7 @@ is_sync_added() {
   if [ ! -f "$FILE" ]; then
     return 1
   fi
-  
+
   load_ini $FILE
   while read -r line; do
     current_name=$(printf "$line" | sed 's/mirrorfy.sync.//')
@@ -407,10 +411,10 @@ is_sync_added() {
 mirrorfy_start() {
   echo "Starting mirrorfy deamon"
   if ! mirrorfy_start_pre_control; then
-      return
+    return
   fi
 
-  echo $$ > pid 
+  echo $$ >pid
   trap mirrorfy_start_exit_trap INT EXIT
   load_ini $(sync_list)
 
@@ -426,14 +430,14 @@ mirrorfy_start() {
   done
 }
 
-mirrorfy_start_pre_control(){
+mirrorfy_start_pre_control() {
   if [ -f "pid" ]; then
-    if  kill -0 `cat pid` > /dev/null 2>&1; then
-        echo "Mirrorfy is already running
+    if kill -0 $(cat pid) >/dev/null 2>&1; then
+      echo "Mirrorfy is already running
         $PWD/pid"
-        return 1
+      return 1
     else
-        echo "Warn: Mirrorfy not well closed" >&2
+      echo "Warn: Mirrorfy not well closed" >&2
     fi
   fi
   if [ "Config is not found." == "$(check_sync_list)" ]; then
@@ -444,37 +448,38 @@ mirrorfy_start_pre_control(){
 
 mirrorfy_start_exit_trap() {
   if [ -f "pid" ]; then
-  echo "Exiting ..."
-  rm pid
+    echo "Exiting ..."
+    rm pid
   fi
-  PGID=$( ps -o pgid= $$ | tr -d \  ); kill -TERM -$PGID
+  PGID=$(ps -o pgid= $$ | tr -d \ )
+  kill -TERM -$PGID
   #kill $$
 }
 
 mirrorfy_stop() {
-echo "Stopping mirrorfy"
+  echo "Stopping mirrorfy"
 
   if [ -f "pid" ]; then
-    mirrorfy_kill_pid=`cat pid`
-    if  kill -0 $mirrorfy_kill_pid > /dev/null 2>&1; then
-        if ! kill $mirrorfy_kill_pid > /dev/null 2>&1; then
-         echo Error: Could not send SIGTERM to process $mirrorfy_kill_pid >&2
-         else
-          return
-        fi
-        echo Info: SIGKILL sent to process $mirrorfy_kill_pid
-        kill -9 $mirrorfy_kill_pid
+    mirrorfy_kill_pid=$(cat pid)
+    if kill -0 $mirrorfy_kill_pid >/dev/null 2>&1; then
+      if ! kill $mirrorfy_kill_pid >/dev/null 2>&1; then
+        echo Error: Could not send SIGTERM to process $mirrorfy_kill_pid >&2
+      else
+        return
+      fi
+      echo Info: SIGKILL sent to process $mirrorfy_kill_pid
+      kill -9 $mirrorfy_kill_pid
     else
-        echo "Warn: Mirrorfy not well closed" >&2
-        rm pid
+      echo "Warn: Mirrorfy not well closed" >&2
+      rm pid
     fi
-    else 
+  else
     echo "Mirrorfy is not running."
   fi
 }
 
 is_windows() {
-  uname -r | grep -i microsoft > /dev/null
+  uname -r | grep -i microsoft >/dev/null
 }
 
 mirrorfy_service() {
@@ -484,8 +489,7 @@ mirrorfy_service() {
     #   return
     # fi
     service mirrorfy start
-    if [ $? -eq 0 ]
-    then
+    if [ $? -eq 0 ]; then
       echo "Mirrorfy Started"
     else
       echo "Mirrorfy cannot started"
@@ -500,8 +504,7 @@ mirrorfy_service() {
     service mirrorfy stop
     echo "Mirrorfy Service Stopped"
     service mirrorfy start
-    if [ $? -eq 0 ]
-    then
+    if [ $? -eq 0 ]; then
       echo "Mirrorfy Service Started"
     else
       echo "Mirrorfy cannot started"
@@ -515,33 +518,30 @@ mirrorfy_service() {
     ;;
 
   unregister)
-      systemctl disable mirrorfy
-      rm /etc/systemd/system/mirrorfy.service
-      rm /etc/init.d/mirrorfy
+    systemctl disable mirrorfy
+    rm /etc/systemd/system/mirrorfy.service
+    rm /etc/init.d/mirrorfy
     if is_windows; then
       mirrorfy_windows_service_unregister
-    #else
+      #else
       #rm ~/.config/autostart/mirrorfy.desktop
     fi
     ;;
   *)
     echo "err $1 is unknown flag.
           Please use start, restart, stop, register or unregister  Aborted ..."
-          if [ "$loopMirrorfy" != "true" ]
-          then
-            exit 1
-          fi
+    if [ "$loopMirrorfy" != "true" ]; then
+      exit 1
+    fi
     ;;
   esac
   if [ -z $exit_err ]; then
-    if [ "$loopMirrorfy" != "true" ]
-      then
-        exit 1
-      fi
+    if [ "$loopMirrorfy" != "true" ]; then
+      exit 1
+    fi
   fi
 
 }
-
 
 mirrorfy_service_register() {
   cat <<EOF >/etc/systemd/system/mirrorfy.service
@@ -562,9 +562,9 @@ ExecStop=/usr/bin/mirrorfy mirrorfy_initd_scripts stop
 WantedBy=multi-user.target
 EOF
 
-systemctl enable mirrorfy
+  systemctl enable mirrorfy
 
-cat <<\EOF >/etc/init.d/mirrorfy
+  cat <<\EOF >/etc/init.d/mirrorfy
 #!/bin/sh
 ### BEGIN INIT INFO
 # Provides:             mirrorfy
@@ -604,60 +604,55 @@ esac
 exit 0 
 EOF
 
-chmod +x /etc/init.d/mirrorfy
+  chmod +x /etc/init.d/mirrorfy
 
-cp $CURR_DIR/$(basename $0) /usr/bin/mirrorfy
-    if is_windows; then
-      mirrorfy_windows_service_register
-#    else
-#      mkdir ~/.config/autostart
-#      cat <<EOF >>~/.config/autostart/mirrorfy.desktop
-#            [Desktop Entry]
-#            Type=Application
-#            Name=mirrorfy
-#            Exec=SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
-#            Comment=Copy your files to server
-#EOF
-#      chmod +x ~/.config/autostart/mirrorfy.desktop
-    fi
+  cp $CURR_DIR/$(basename $0) /usr/bin/mirrorfy
+  if is_windows; then
+    mirrorfy_windows_service_register
+    #    else
+    #      mkdir ~/.config/autostart
+    #      cat <<EOF >>~/.config/autostart/mirrorfy.desktop
+    #            [Desktop Entry]
+    #            Type=Application
+    #            Name=mirrorfy
+    #            Exec=SCREENDIR=$HOME/.screen screen -S mirrorfy -dm mirrorfy start
+    #            Comment=Copy your files to server
+    #EOF
+    #      chmod +x ~/.config/autostart/mirrorfy.desktop
+  fi
 }
 
-
 mirrorfy_initd_scripts() {
-    start() {
+  start() {
     #echo "Starting for"
-    while IFS= read -r p || [ -n "$p" ]
-    do
-      run_user=`echo $p| cut -d":" -f1`
-      run_user_dir=`echo $p| cut -d":" -f6`
-      if test -f "$run_user_dir/.mirrorfy.list"
-      then
+    while IFS= read -r p || [ -n "$p" ]; do
+      run_user=$(echo $p | cut -d":" -f1)
+      run_user_dir=$(echo $p | cut -d":" -f6)
+      if test -f "$run_user_dir/.mirrorfy.list"; then
         #echo "   $run_user"
         HOME=$run_user_dir USER=$run_user start-stop-daemon --start -q -b -u $run_user -p /tmp/mirrorfy/$USER/pid --exec /usr/bin/mirrorfy start #> /dev/null
       fi
-    done < "/etc/passwd"
+    done <"/etc/passwd"
   }
 
   stop() {
     #echo "Stopping for"
-    while IFS="" read -r p || [ -n "$p" ]
-    do
-      run_user=`echo $p| cut -d":" -f1`
-      run_user_dir=`echo $p| cut -d":" -f6`
-      if test -f "$run_user_dir/.mirrorfy.list"
-      then
+    while IFS="" read -r p || [ -n "$p" ]; do
+      run_user=$(echo $p | cut -d":" -f1)
+      run_user_dir=$(echo $p | cut -d":" -f6)
+      if test -f "$run_user_dir/.mirrorfy.list"; then
         #echo "   $run_user"
-        HOME=$run_user_dir USER=$run_user start-stop-daemon --start -q -u $run_user --exec /usr/bin/mirrorfy stop > /dev/null
+        HOME=$run_user_dir USER=$run_user start-stop-daemon --start -q -u $run_user --exec /usr/bin/mirrorfy stop >/dev/null
       fi
-    done < "/etc/passwd"
+    done <"/etc/passwd"
   }
-case $1 in
-start)
-  $1
-  ;;
-stop)
-  $1
-  ;;
+  case $1 in
+  start)
+    $1
+    ;;
+  stop)
+    $1
+    ;;
   esac
 }
 mirrorfy_windows_service_register() {
@@ -666,8 +661,8 @@ mirrorfy_windows_service_register() {
 echo @echo off > %WINDIR%\system32\mirrorfy.bat
 echo wsl.exe -d $WSL_DISTRO_NAME mirrorfy %%* >> %WINDIR%\system32\mirrorfy.bat
 EOF
-run_on_win mirrorfy_windows_service_register.bat
-rm mirrorfy_windows_service_register.bat
+  run_on_win mirrorfy_windows_service_register.bat
+  rm mirrorfy_windows_service_register.bat
 }
 mirrorfy_windows_service_unregister() {
   schtasks.exe /delete /tn "mirrorfy" /f
@@ -708,24 +703,22 @@ help() {
 }
 
 one_click_install() {
-sudo apt update
-sudo apt install inotify-tools openssh rsync nano
-mirrorfy_service_register
-systemctl start mirrorfy
+  sudo apt update
+  sudo apt install inotify-tools openssh rsync nano
+  mirrorfy_service_register
+  systemctl start mirrorfy
 }
 
 edit_mirrorfy() {
-  sync_list_var=`sync_list`
-  if is_windows
-  then
-    notepad.exe `wslpath -w $sync_list_var`
+  sync_list_var=$(sync_list)
+  if is_windows; then
+    notepad.exe $(wslpath -w $sync_list_var)
   else
     nano $sync_list_var
   fi
 }
 
 check_required_program
-
 
 ####
 # Command line argument parser
@@ -758,7 +751,7 @@ service)
   ;;
 edit)
   edit_mirrorfy
-  ;;  
+  ;;
 "")
   echo "Mirrorfy: Hello again. 
 Here is some services"
@@ -766,11 +759,10 @@ Here is some services"
   while true; do
     unset noargstart
     unset noargstartarray
-    
+
     read -p 'What do you want ? » ' -e noargstart
-    if [ -z "$noargstart" ]
-    then
-    noargstart="empty"
+    if [ -z "$noargstart" ]; then
+      noargstart="empty"
     fi
     export loopMirrorfy="true"
     #for word in $noargstart; do
