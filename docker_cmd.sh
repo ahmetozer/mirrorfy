@@ -34,6 +34,7 @@ $password" | passwd $user
         chmod 644 $ssh_dir/authorized_keys
     fi
     ssh-keygen -A
+    cp /etc/sshd/* /etc/ssh/
 fi
 
 
