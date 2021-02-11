@@ -3,6 +3,8 @@
 port=${port-22}
 user=${user-mirrorfy}
 
+password=${password-$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32};echo;)}
+
 if [ ! -z "$port" ]; then
     port_regex="^((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([1-9][0-9]{3})|([1-9][0-9]{2})|([1-9][0-9])|([1-9]))$"
 
@@ -34,6 +36,11 @@ fi
 
 if [ ! -f "/etc/ssh/ssh_host_dsa_key" ]; then
     ssh-keygen -A
+fi
+
+# Show credentials
+if [ "$scre" == "yes" ]; then
+    echo "Username $user password $password"
 fi
 
 if [ -f "/authorized_keys" ]; then
