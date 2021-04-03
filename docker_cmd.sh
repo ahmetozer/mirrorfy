@@ -51,6 +51,7 @@ if [ -f "first_run" ]; then
     else
         if [ ! -z "$password" ]; then
             echo "Error: '/authorized_keys' were not found and the password was not defined. No one can be login to the system."
+            exit 1
         fi
     fi
 
@@ -59,7 +60,6 @@ if [ -f "first_run" ]; then
         echo "$password
 $password" | passwd $user
     fi
-    set +e
     rm first_run
 fi
 

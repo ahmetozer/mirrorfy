@@ -1,6 +1,6 @@
 FROM alpine as Mirrorfyinstall
 WORKDIR /src
-COPY . .
+COPY mirrorfy docker_cmd.sh /src/
 
 RUN apk add inotify-tools openssh rsync screen openssh bash && \
 chmod +x mirrorfy && \
