@@ -2,11 +2,12 @@
 
 port=${port-"22"}
 user=${user-"mirrorfy"}
-
-password=${password-$(
-    tr </dev/urandom -dc _A-Z-a-z-0-9 | head -c${1:-32}
-    echo
-)}
+if [ "$auto" == "yes" ]; then
+    password=${password-$(
+        tr </dev/urandom -dc _A-Z-a-z-0-9 | head -c${1:-32}
+        echo
+    )}
+fi
 
 if [ ! -z "$port" ]; then
     port_regex="^((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([1-9][0-9]{3})|([1-9][0-9]{2})|([1-9][0-9])|([1-9]))$"
@@ -25,11 +26,11 @@ if [ -f "first_run" ]; then
             echo 'Your user is has a unexpected char. You can write a email adress or user'
             exit 1
         else
-            if id "root" &>/dev/null; then
+            if id "$user" &>/dev/null; then
                 echo "user '$user' is found"
             else
                 adduser --disabled-password $user
-            fi            
+            fi
         fi
     fi
 
@@ -46,7 +47,7 @@ if [ ! -f "/etc/ssh/ssh_host_dsa_key" ]; then
 fi
 
 # Show credentials
-if [ "$scre" == "yes" ]; then
+if [ "$auto" == "yes" ]; then
     echo "Username $user password $password"
 fi
 
